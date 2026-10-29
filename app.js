@@ -37,13 +37,14 @@ function cardHTML(q,context='bank') {
  const u=units[q.unit],r=getRecord(q.id),memoID=`memo-${context}-${q.id}`;
  return `<article class="card" id="${context}-${q.id}" style="--unit-color:${u.color}" data-id="${q.id}">
  <div class="card-header"><span class="category">${escapeHTML(u.chapter)} · ${escapeHTML(u.name)}</span><button class="star ${r.star?'on':''}" data-action="star" data-id="${q.id}" aria-label="${r.star?'取消待加強':'標記待加強'}：${escapeHTML(q.title)}" aria-pressed="${r.star}" title="標記待加強">${r.star?'★':'☆'}</button></div>
- <div class="section-english">${escapeHTML(u.english)}</div><div class="origin">${escapeHTML(q.exam)} · 第 ${q.num} 題 · 資料夾 ${q.folder}</div>${(q.additionalSources||[]).map(source=>`<div class="origin">另收錄：${escapeHTML(source.exam)} · 第 ${escapeHTML(source.num)} 題</div>`).join('')}<h3>${escapeHTML(q.title)}</h3><p class="body-text">${escapeHTML(q.body)}</p>
+ <div class="section-english">${escapeHTML(u.english)}</div><div class="origin">${escapeHTML(q.exam)} · 第 ${q.num} 題 · 資料夾 ${q.folder}</div>${(q.additionalSources||[]).map(source=>`<div class="origin">另收錄：${escapeHTML(source.exam)} · 第 ${escapeHTML(source.num)} 題</div>`).join('')}<h3>${context==='midterm'?'第 '+escapeHTML(q.num)+' 題｜':''}${escapeHTML(q.title)}</h3><p class="body-text">${escapeHTML(q.body)}</p>
  <div class="tags">${q.tags.map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join('')}${q.repeat?'<span class="tag repeat">同題再現</span>':''}${q.exam.includes('期中')?'<span class="tag repeat">期中考</span>':''}</div>
  <div class="section-reference"><strong>主要節次 ${escapeHTML(q.section)}</strong>${q.related.length?`<span>相關節次：${q.related.map(escapeHTML).join('、')}</span>`:''}</div>
+ ${q.teaching?`<details class="exam-teaching ${q.teaching.warning?'needs-care':''}" ${context==='midterm'?'open':''}><summary>${q.teaching.warning?'這題的條件要先釐清':'先用白話看懂這題'}</summary><div class="detail-body"><p><strong>到底在問什麼：</strong>${escapeHTML(q.teaching.task)}</p><p><strong>為什麼這樣做：</strong>${escapeHTML(q.teaching.why)}</p><p><strong>最容易錯：</strong>${escapeHTML(q.teaching.trap)}</p></div></details>`:''}
  <details><summary>教材節次與分類依據</summary><div class="detail-body">${escapeHTML(q.classification)}${q.bookMatch?`<p class="book-match">教材對照：${escapeHTML(q.bookMatch)} · 印刷頁 ${q.sourcePage-21}<br><button data-book="${q.sourcePage}">查看教材對照頁 ↗</button></p>`:''}</div></details>
  <div class="question-lesson"><span>${escapeHTML(u.plain?.purpose||u.intro)}</span><button data-guide="${u.id}">不懂為什麼用這個公式？看 §${escapeHTML(u.code)} →</button></div>
  <details><summary>給我一個提示</summary><div class="detail-body">${escapeHTML(q.hint)}</div></details>
- <details class="solution"><summary>查看解答與思路</summary><div class="detail-body"><div class="answer">${escapeHTML(q.answer)}</div><ol>${q.steps.map(s=>`<li>${escapeHTML(s)}</li>`).join('')}</ol>${q.options?`<p class="options">對照原題選項：${escapeHTML(q.options)}</p>`:''}${q.note?`<p class="note">${escapeHTML(q.note)}</p>`:''}${q.repeat?`<p>重複出題：${escapeHTML(questions[q.repeat].exam)} 第 ${questions[q.repeat].num} 題。</p>`:''}<p><button data-book="${q.page||u.page||''}" ${!(q.page||u.page)?'hidden':''}>回到教材 ↗</button></p></div></details>
+ <details class="solution" ${context==='midterm'?'open':''}><summary>${context==='midterm'?'逐步講解與選項判斷':'查看解答與思路'}</summary><div class="detail-body"><div class="answer">${escapeHTML(q.answer)}</div><ol>${q.steps.map(s=>`<li>${escapeHTML(s)}</li>`).join('')}</ol>${q.options?`<p class="options">對照原題選項：${escapeHTML(q.options)}</p>`:''}${q.optionChecks?`<details class="option-checks"><summary>逐一核對原題選項</summary><div class="table-wrap"><table><thead><tr><th>選項</th><th>原題條件</th><th>判斷</th></tr></thead><tbody>${q.optionChecks.map(([letter,condition,result])=>`<tr><td>${escapeHTML(letter)}</td><td>${escapeHTML(condition)}</td><td>${escapeHTML(result)}</td></tr>`).join('')}</tbody></table></div></details>`:''}${q.note?`<p class="note">${escapeHTML(q.note)}</p>`:''}${q.repeat?`<p>重複出題：${escapeHTML(questions[q.repeat].exam)} 第 ${questions[q.repeat].num} 題。</p>`:''}<p><button data-book="${q.page||u.page||''}" ${!(q.page||u.page)?'hidden':''}>回到教材 ↗</button></p></div></details>
  <details><summary>我的複習筆記</summary><div class="detail-body"><label for="${memoID}">記下這題容易忘記的地方</label><textarea class="memo" id="${memoID}" data-note="${q.id}" maxlength="5000" placeholder="例如：CDF 要把 ≤ 的情況一起加總。">${escapeHTML(r.note)}</textarea><small>自動儲存在此瀏覽器，可在「來源整理」匯出備份。</small></div></details>
  <div class="card-footer"><button data-action="image" data-id="${q.id}">原題截圖 ${q.files.length>1?`· ${q.files.length} 張`:''} ↗</button><button data-action="done" data-id="${q.id}" class="${r.done?'mastered':''}" aria-pressed="${r.done}">${r.done?'✓ 已熟練':'○ 標記熟練'}</button></div></article>`;
 }
@@ -68,17 +69,29 @@ function switchView(view) {
  document.querySelectorAll('[role="tab"][data-view]').forEach(el=>{const active=el.dataset.view===view;el.classList.toggle('active',active);el.setAttribute('aria-selected',String(active));});
 }
 function chooseUnit(unit) {selectedUnit=unit;renderNav();renderBank();switchView('bank');history.replaceState(null,'','#bank');}
+function renderMidterm() {
+ const exam=DATA.featuredExam, container=$('#midtermCards');if(!exam||!container)return;
+ const openStates=new Map(Array.from(container.querySelectorAll('.card'),c=>[c.dataset.id,Array.from(c.querySelectorAll('details'),d=>d.open)]));
+ const qs=exam.questionIds.map(id=>questions[id]);
+ $('#midtermIntro').innerHTML=`<div class="eyebrow">資料夾 9 · ${escapeHTML(exam.name)}</div><h2>${escapeHTML(exam.title)}</h2><p>照原題號讀，每題先說「在問什麼、為什麼這樣做」，再把計算和選項走一次。</p><div class="exam-metrics"><strong>${qs.length} 題已收錄</strong><span>第 ${exam.missing.join('、')} 題未提供</span><span>已熟練 ${qs.filter(q=>getRecord(q.id).done).length} / ${qs.length} 題</span></div><nav class="exam-jumps" aria-label="PB 1101 題號">${qs.map(q=>`<button data-midterm-question="${q.id}">第 ${q.num} 題 <small>§${escapeHTML(q.section)}</small></button>`).join('')}</nav><p class="exam-caution"><strong>第 2 題特別提醒：</strong>獨立不代表相關係數一定存在；題面讓 X 的變異數為無限大，講解會列出原因。以下解答為重新推導，原截圖的勾選不直接視為正解。</p>`;
+ container.innerHTML=qs.map(q=>cardHTML(q,'midterm')).join('');
+ for(const card of container.querySelectorAll('.card')){const state=openStates.get(card.dataset.id);if(state)card.querySelectorAll('details').forEach((d,i)=>d.open=state[i]===true);}
+}
+function jumpToMidtermQuestion(id) {
+ if(!DATA.featuredExam.questionIds.includes(id))return;
+ switchView('midterm');const card=$('#midterm-'+id);card.tabIndex=-1;card.focus({preventScroll:true});card.scrollIntoView({behavior:'smooth',block:'start'});history.replaceState(null,'','#midterm-'+id);
+}
 function renderGuides() {
  if(!$('#guideStart').hasChildNodes())renderGuideStart();
- $('#guideList').innerHTML=DATA.units.map(u=>`<article class="guide" id="guide-${u.id}"><div class="guide-top"><div><div class="eyebrow">${u.chapterNumber===null?'SUPPLEMENT':'SECTION '+escapeHTML(u.code)}</div><h2>${escapeHTML(u.chapter)} ${escapeHTML(u.name)}</h2><p class="section-original">${escapeHTML(u.english)}</p><span class="chapter">${escapeHTML(u.chapter)}${u.page?` · 印刷頁 ${u.pages} · PDF 第 ${u.page} 頁起`:' · 數學先備'}</span></div>${u.page?`<button data-book="${u.page}">開啟教材 ↗</button>`:''}</div>${lessonHTML(u)}<details class="formula-reference"><summary>課本公式備查與補充重點</summary><p>${escapeHTML(u.intro)}</p><div class="formula-list">${u.formulas.map(f=>`<div class="formula">${escapeHTML(f)}</div>`).join('')}</div><ul class="tips">${u.tips.map(t=>`<li>${escapeHTML(t)}</li>`).join('')}</ul></details><button data-unit="${u.id}">本節考題 ${DATA.questions.filter(q=>q.unit===u.id).length} 題 →</button>${u.slides.length?`<div class="slides">${u.slides.map(f=>{const l=DATA.lectures.find(l=>l.file===f);return `<button class="slide" data-slide="${f}">${ASSETS[f]?`<img src="${ASSETS[f]}" loading="lazy" alt="${escapeHTML(l.title)}">`:'<span class="private-placeholder">匯入私人教材後查看照片</span>'}<span>${escapeHTML(l.title)} ↗</span></button>`;}).join('')}</div>`:'<p class="chapter">此節未提供專屬上課照片，請搭配教材或上述重點複習。</p>'}</article>`).join('');
+ $('#guideList').innerHTML=DATA.units.map(u=>`<article class="guide" id="guide-${u.id}"><div class="guide-top"><div><div class="eyebrow">${u.chapterNumber===null?'SUPPLEMENT':'SECTION '+escapeHTML(u.code)}</div><h2>${escapeHTML(u.chapter)} ${escapeHTML(u.name)}</h2><p class="section-original">${escapeHTML(u.english)}</p><span class="chapter">${escapeHTML(u.chapter)}${u.page?` · 印刷頁 ${u.pages} · PDF 第 ${u.page} 頁起`:' · 數學先備'}</span></div>${u.page?`<button data-book="${u.page}">開啟教材 ↗</button>`:''}</div>${lessonHTML(u)}<details class="formula-reference"><summary>課本公式備查與補充重點</summary><p>${escapeHTML(u.intro)}</p><div class="formula-list">${u.formulas.map(f=>`<div class="formula">${escapeHTML(f)}</div>`).join('')}</div><ul class="tips">${u.tips.map(t=>`<li>${escapeHTML(t)}</li>`).join('')}</ul></details><button data-unit="${u.id}">本節考題 ${DATA.questions.filter(q=>q.unit===u.id).length} 題 →</button>${u.slides.length?`<div class="slides">${u.slides.map(f=>{const l=DATA.lectures.find(l=>l.file===f);return `<button class="slide" data-slide="${f}">${ASSETS[f]?`<img src="${ASSETS[f]}" loading="lazy" alt="${escapeHTML(l.title)}">`:'<span class="private-placeholder">教材載入中，點擊可查看狀態</span>'}<span>${escapeHTML(l.title)} ↗</span></button>`;}).join('')}</div>`:'<p class="chapter">此節未提供專屬上課照片，請搭配教材或上述重點複習。</p>'}</article>`).join('');
 }
 function renderSources() {
  const examRows=Object.entries(DATA.coverage).map(([exam,coverage])=>`<tr><td>${escapeHTML(exam)}</td><td>${DATA.questions.filter(q=>matchesExam(q,exam)).length}</td><td>${escapeHTML(coverage)}</td><td><button data-exam="${escapeHTML(exam)}">查看題目</button></td></tr>`).join('');
- $('#sources').innerHTML=`<div class="sources-box"><h2>這份題庫如何整理？</h2><ul><li><strong>嚴格依原文教材的節號順序排列。</strong>使用原書節號與原文節名，中文為輔助譯名；每題只計入一個主要節次，另列相關節次與分類依據。</li><li>目前資料涵蓋第 1–4 章的 ${STATS.sectionCount} 個節次，其中 ${STATS.testedSectionCount} 節有直接對應考題；2.1、2.2、2.5、3.1 保留教材與上課照片對照，主要題數為 0。微積分題另列「課外先備」。未列出的教材節次不代表不考，只代表現有資料未涵蓋。</li><li>逐一對照資料夾 1～8 與「複習網站/新增題目」的 <strong>${STATS.examScreenshots} 張考題截圖</strong>：${STATS.academicScreenshots} 張歸入 ${STATS.questionCount} 張學科題卡，另外 ${DATA.excluded.length} 張為點名代碼。單張截圖包含多題時，各題共用原圖。</li><li>目前 ${STATS.questionCount} 張題卡包含 <strong>${STATS.distinctCount} 道不同題目</strong>。既有兩份試卷的偏幣題保留各自題卡；2026-10-16 新增的密碼題併入既有題卡，另列截圖來源與題號。新增來源篩選會顯示這張合併題卡，所以來源表的題數不可直接加總。</li><li><strong>${STATS.lectureCount} 張上課照片</strong>已配到相關單元；原圖與完整教材需匯入私人教材包後，在此裝置檢視。教材共 812 個 PDF 頁面；前段正文的 PDF 頁碼 = 印刷頁碼 + 21。</li><li>資料夾編號是來源編號，並非單元編號；試卷名稱沿用截圖，不推定年份或考試日期。</li><li>題幹以中文整理，原始英文、選項與作答紀錄保留在私人教材包的原圖。展開的解答為重新推導；原圖「答題情況」是當時作答，不直接視為標準答案。</li></ul><div class="actions"><button class="primary" data-book="8">教材目錄預覽 ↗</button><button id="downloadPDF">下載我的教材 PDF</button></div></div>
+ $('#sources').innerHTML=`<div class="sources-box"><h2>這份題庫如何整理？</h2><ul><li><strong>嚴格依原文教材的節號順序排列。</strong>使用原書節號與原文節名，中文為輔助譯名；每題只計入一個主要節次，另列相關節次與分類依據。</li><li>目前資料涵蓋第 1–4 章的 ${STATS.sectionCount} 個節次，其中 ${STATS.testedSectionCount} 節有直接對應考題；2.1、2.2、2.5、3.1 保留教材與上課照片對照，主要題數為 0。微積分題另列「課外先備」。未列出的教材節次不代表不考，只代表現有資料未涵蓋。</li><li>逐一對照資料夾 1～9 與「複習網站/新增題目」的 <strong>${STATS.examScreenshots} 張考題截圖</strong>：${STATS.academicScreenshots} 張歸入 ${STATS.questionCount} 張學科題卡，另外 ${DATA.excluded.length} 張為點名代碼。單張截圖包含多題時，各題共用原圖。</li><li>目前 ${STATS.questionCount} 張題卡包含 <strong>${STATS.distinctCount} 道不同題目</strong>。偏幣題與獨立事件條件機率題保留各份試卷的題卡；2026-10-16 新增的密碼題併入既有題卡，另列截圖來源與題號。新增來源篩選會顯示這張合併題卡，所以來源表的題數不可直接加總。</li><li><strong>${STATS.lectureCount} 張上課照片</strong>已配到相關單元；原圖與完整教材由網站自動載入，不必另外匯入。教材共 812 個 PDF 頁面；前段正文的 PDF 頁碼 = 印刷頁碼 + 21。</li><li>資料夾編號是來源編號，並非單元編號；試卷名稱沿用截圖，不推定年份或考試日期。</li><li>題幹以中文整理，原始英文、選項與作答紀錄保留在原圖。展開的解答為重新推導；原圖「答題情況」是當時作答，不直接視為標準答案。</li></ul><div class="actions"><button class="primary" data-book="8">教材目錄預覽 ↗</button><button id="downloadPDF">下載教材 PDF</button></div></div>
  <div class="sources-box"><h2>試卷覆蓋範圍</h2><p>只收錄實際提供的截圖。未提供的題目不補造，也不推測其內容。</p><div class="table-wrap"><table><thead><tr><th>截圖試卷名稱</th><th>學科題數</th><th>資料完整性</th><th>複習</th></tr></thead><tbody>${examRows}</tbody></table></div></div>
- <div class="sources-box"><h2>需要特別留意的原始作答</h2><ul><li><strong>PB 72 am 第 1 題：</strong>原作答為 0 分；方法數應為 500，選項要包含 D（>400）。</li><li><strong>PB 073 am 第 2 題：</strong>原作答為 0 分；三骰和為 16 的機率是 1/36，只符合 E（>0.02）。</li><li><strong>PB 709 am 第 1 題與 pm 第 5 題：</strong>同一道偏幣期望值題，選項字母不同。</li><li><strong>新增截圖第 1 題：</strong>密碼題機率為 1/26，A–E 皆成立；只選 C 不完整。</li><li><strong>新增截圖第 5 題：</strong>水果題機率為 1/2，正確選項為 D（>0.45），原選 C（<0.25）不成立。</li><li><strong>跨單元分類：</strong>抽球可延伸到 §5.3 超幾何分布，指數密度可延伸到 §6.6；主分類依原文教材節次；另以「相關節次」標記先備與延伸。</li></ul></div>
+ <div class="sources-box"><h2>需要特別留意的原始作答</h2><ul><li><strong>PB 1101 midterm：</strong>資料夾 9 已整理為專區，第 5 題未提供。第 2 題需檢查相關係數的存在條件；第 6 題答案為 1/4，選 C；第 7 題答案為 4/15，應選 C、D。</li><li><strong>PB 72 am 第 1 題：</strong>原作答為 0 分；方法數應為 500，選項要包含 D（>400）。</li><li><strong>PB 073 am 第 2 題：</strong>原作答為 0 分；三骰和為 16 的機率是 1/36，只符合 E（>0.02）。</li><li><strong>PB 709 am 第 1 題與 pm 第 5 題：</strong>同一道偏幣期望值題，選項字母不同。</li><li><strong>新增截圖第 1 題：</strong>密碼題機率為 1/26，A–E 皆成立；只選 C 不完整。</li><li><strong>新增截圖第 5 題：</strong>水果題機率為 1/2，正確選項為 D（>0.45），原選 C（<0.25）不成立。</li><li><strong>跨單元分類：</strong>抽球可延伸到 §5.3 超幾何分布，指數密度可延伸到 §6.6；主分類依原文教材節次；另以「相關節次」標記先備與延伸。</li></ul></div>
  <div class="sources-box"><h2>排除的點名題</h2><p>保留來源可供核對，不計入題數與熟練進度。</p>${DATA.excluded.map(e=>`<p>${escapeHTML(e.exam)} 第 ${e.num} 題 · ${escapeHTML(e.reason)} <button data-slide="${e.file}">查看原圖</button></p>`).join('')}</div>
- <div class="sources-box"><h2>我的複習紀錄</h2><p>iPhone：Safari → 分享 → 加入主畫面。建議先加入主畫面，再從圖示開啟並匯入教材、進度；不同瀏覽器與主畫面 App 的儲存空間可能不同。顯示「題庫已可離線開啟」後即可離線複習，裝置清理網站資料後需重新連線及匯入。</p><p>「已熟練」、待加強星號與筆記儲存在目前瀏覽器。換瀏覽器、搬動 HTML 或清除瀏覽資料時，請先匯出，再於新位置匯入。匯入會以檔案中的紀錄更新相同題目。</p><div class="actions"><button id="exportProgress">匯出進度 JSON</button><button id="importProgress">匯入進度</button><button id="printSources">列印目前內容</button></div></div>`;
+ <div class="sources-box"><h2>我的複習紀錄</h2><p>iPhone：Safari → 分享 → 加入主畫面。題庫與教材分別儲存；看到「教材已儲存，可離線查看」後，原圖與課本也可離線使用。不同瀏覽器與主畫面 App 的儲存空間可能不同，第一次開啟時會自動下載。裝置清理網站資料後，請重新連線。</p><p>「已熟練」、待加強星號與筆記儲存在目前瀏覽器。換瀏覽器、搬動 HTML 或清除瀏覽資料時，請先匯出，再於新位置匯入。匯入會以檔案中的紀錄更新相同題目。</p><div class="actions"><button id="exportProgress">匯出進度 JSON</button><button id="importProgress">匯入進度</button><button id="printSources">列印目前內容</button></div></div>`;
 }
 function ensurePDF() {
  if (!pdfURL) {
@@ -111,7 +124,7 @@ function showRandom() {
  if(!$('#randomDialog').open)$('#randomDialog').showModal();
 }
 function updateQuestionState(id,field) {
- const r=getRecord(id);records[id]={...r,[field]:!r[field]};save();renderBank();
+ const r=getRecord(id);records[id]={...r,[field]:!r[field]};save();renderBank();renderMidterm();
  if($('#randomDialog').open&&currentRandom===id){
   const card=$('#randomCard');const open=Array.from(card.querySelectorAll('details')).map(d=>d.open);card.innerHTML=cardHTML(questions[id],'random');card.querySelectorAll('details').forEach((d,i)=>d.open=open[i]);
  }
@@ -125,13 +138,14 @@ document.addEventListener('click',e=>{
  if(b.dataset.book){openBook(b.dataset.book);return;}
  if(b.dataset.guide){jumpToGuide(b.dataset.guide);return;}
  if(b.dataset.question){jumpToQuestion(b.dataset.question);return;}
+ if(b.dataset.midtermQuestion){jumpToMidtermQuestion(b.dataset.midtermQuestion);return;}
  if(b.dataset.unit&&!b.closest('#unitNav')){chooseUnit(b.dataset.unit);$('#bank').scrollIntoView({behavior:'smooth'});return;}
  if(b.dataset.slide){const l=DATA.lectures.find(l=>l.file===b.dataset.slide);showImages([b.dataset.slide],l?l.title:'原始點名題');return;}
  if(b.dataset.exam){selectedUnit='all';$('#exam').value=b.dataset.exam;$('#search').value='';$('#status').value='all';renderNav();renderBank();switchView('bank');$('#bank').scrollIntoView({behavior:'smooth'});return;}
  if(b.dataset.action){const q=questions[b.dataset.id];if(b.dataset.action==='image')showImages(q.files,`${q.exam} 第 ${q.num} 題 · ${q.title}`);else updateQuestionState(q.id,b.dataset.action);return;}
  if(b.id==='exportProgress')downloadBlob(new Blob([JSON.stringify({format:'probability-review-v1',exportedAt:new Date().toISOString(),records},null,2)],{type:'application/json'}),'機率統計_複習進度.json');
  if(b.id==='importProgress')$('#importFile').click();
- if(['downloadPDF','downloadPDFInDialog'].includes(b.id))downloadTextbook();
+ if(['downloadPDF','downloadPDFInDialog','downloadPDFInMaterials'].includes(b.id))downloadTextbook();
  if(['print','printSources'].includes(b.id))window.print();
 });
 document.addEventListener('input',e=>{
@@ -150,10 +164,10 @@ $('#imageDialog').addEventListener('keydown',e=>{if(e.key==='ArrowLeft')$('#prev
 for(const d of document.querySelectorAll('dialog'))d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});
 $('#importFile').addEventListener('change',async e=>{
  const file=e.target.files[0];if(!file)return;
- try{if(file.size>2000000)throw new Error('檔案過大');const data=JSON.parse(await file.text());if(data.format!=='probability-review-v1')throw new Error('請選擇此題庫匯出的進度檔');records={...records,...cleanRecords(data.records)};save();renderBank();toast('複習進度已匯入');}catch(err){toast('匯入失敗：'+err.message);}finally{e.target.value='';}
+ try{if(file.size>2000000)throw new Error('檔案過大');const data=JSON.parse(await file.text());if(data.format!=='probability-review-v1')throw new Error('請選擇此題庫匯出的進度檔');records={...records,...cleanRecords(data.records)};save();renderBank();renderMidterm();toast('複習進度已匯入');}catch(err){toast('匯入失敗：'+err.message);}finally{e.target.value='';}
 });
 $('#exam').insertAdjacentHTML('beforeend',Object.keys(DATA.coverage).map(e=>`<option value="${escapeHTML(e)}">${escapeHTML(e)}</option>`).join(''));
-renderNav();renderBank();renderGuides();renderSources();
+renderNav();renderBank();renderGuides();renderSources();renderMidterm();
 
 // Plain-language explanations appear before the formula reference.
 function lessonHTML(u) {
@@ -207,20 +221,30 @@ function jumpToGuide(unit) {
 function openLinkedView() {
  const hash=location.hash.slice(1);
  if(hash.startsWith('guide-'))jumpToGuide(hash.slice(6));
+ else if(hash.startsWith('midterm-'))jumpToMidtermQuestion(hash.slice(8));
  else if(hash.startsWith('question-'))jumpToQuestion(hash.slice(9));
- else if(['bank','guides','sources'].includes(hash)){switchView(hash);$('#'+hash).scrollIntoView();}
+ else if(['bank','guides','sources','midterm'].includes(hash)){switchView(hash);$('#'+hash).scrollIntoView();}
 }
 
 document.addEventListener('change',e=>{if(e.target.id==='formulaQuestion')renderFormulaAdvice(e.target.value);});
 window.addEventListener('hashchange',openLinkedView);
 openLinkedView();
 
-// Private material files are read locally and never sent to a server.
+// Hosted materials are downloaded once; study notes and progress stay local.
 let pendingMaterialAction = null;
 let materialImportInProgress = false;
+let materialDownload = null;
+let loadedPack = null;
+function materialStatus(title,message) {
+ $('#materialsState').textContent=title;
+ $('#materialsDescription').textContent=message;
+ $('#materialsMessage').textContent=title+'。'+message;
+}
 function requestMaterials(action) {
  pendingMaterialAction = action || null;
- if (!$('#materialsDialog').open) $('#materialsDialog').showModal();
+ if(!action){if(!$('#materialsDialog').open)$('#materialsDialog').showModal();return;}
+ toast('教材載入中，完成後會自動開啟');
+ loadHostedMaterials().catch(()=>{if(!$('#materialsDialog').open)$('#materialsDialog').showModal();});
 }
 function materialDatabase() {
  return new Promise((resolve,reject)=>{
@@ -246,7 +270,7 @@ async function materialStore(mode,value) {
  } finally {db.close();}
 }
 function validateMaterialPack(pack) {
- if (!pack || pack.format!=='probability-review-materials-v1' || !pack.assets || typeof pack.assets!=='object' || Array.isArray(pack.assets)) throw new Error('請選擇機率統計的私人教材包 JSON');
+ if (!pack || pack.format!=='probability-review-materials-v1' || !pack.assets || typeof pack.assets!=='object' || Array.isArray(pack.assets)) throw new Error('請選擇機率統計的教材包 JSON');
  const assets=Object.create(null);
  for (const file of DATA.privateAssetKeys) {
   const value=Object.prototype.hasOwnProperty.call(pack.assets,file)?pack.assets[file]:null;
@@ -254,38 +278,74 @@ function validateMaterialPack(pack) {
   assets[file]=value;
  }
  if (typeof pack.pdf!=='string' || !pack.pdf.startsWith('JVBERi0') || !/^[A-Za-z0-9+/=]+$/.test(pack.pdf) || pack.pdf.length>30000000) throw new Error('教材包的 PDF 格式不正確');
- return {format:'probability-review-materials-v1',assets,pdf:pack.pdf};
+ return {format:'probability-review-materials-v1',assets,pdf:pack.pdf,revision:typeof pack.revision==='string'?pack.revision:''};
 }
 function applyMaterialPack(pack) {
+ loadedPack=pack;
  Object.assign(ASSETS,pack.assets);
  $('#textbook-data').textContent=pack.pdf;
  if(pdfURL){URL.revokeObjectURL(pdfURL);pdfURL=null;}
- $('#materialsState').textContent='私人教材已載入此裝置';
- $('#materialsDescription').textContent='原題、上課照片及課本頁面可在這部裝置檢視。';
- $('#materialsMessage').textContent='已載入私人教材；這些資料不會上傳。';
- $('#materialsOpen').textContent='管理我的教材';
  renderGuides();
+}
+function finishMaterialAction() {
+ const action=pendingMaterialAction;pendingMaterialAction=null;
+ if(action){$('#materialsDialog').close();action();}
+}
+async function loadHostedMaterials() {
+ if(materialDownload)return materialDownload;
+ materialDownload=(async()=>{
+  $('#retryMaterials').disabled=true;
+  materialStatus('正在下載教材…',`首次約 ${Math.round(DATA.materialBundle.bytes/1000000)} MB；你可以先閱讀題目與白話教材。`);
+  try {
+   if(!('DecompressionStream' in window))throw new Error('此瀏覽器無法解壓教材，請更新瀏覽器或使用本機 JSON 匯入');
+   const bundle=DATA.materialBundle;
+   const response=await fetch(bundle.url+'?v='+bundle.revision);
+   if(!response.ok)throw new Error('下載失敗（HTTP '+response.status+'），請稍後重試');
+   const bytes=new Uint8Array(await response.arrayBuffer());
+   const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
+   if(digest!==bundle.revision)throw new Error('教材下載不完整或版本尚未更新，請稍後重試');
+   materialStatus('正在整理教材…','下載已完成，正在解壓並儲存到這個裝置。');
+   const unpacked=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+   const pack=validateMaterialPack(await new Response(unpacked).json());pack.revision=bundle.revision;
+   let saved=true;
+   try{await materialStore('readwrite',pack);}catch{saved=false;}
+   applyMaterialPack(pack);
+   materialStatus(saved?'教材已儲存，可離線查看':'教材已載入（僅本次使用）',saved?'原題、上課照片及完整課本已備妥，下次不必再匯入。':'裝置未能保存教材，下次開啟會重新下載。');
+   finishMaterialAction();
+  } catch(error) {
+   materialStatus(loadedPack?'新教材未能下載，仍可使用已載入版本':'教材下載未完成',error.message+'；請在「教材與下載」重試。');
+   throw error;
+  } finally {$('#retryMaterials').disabled=false;}
+ })().finally(()=>{materialDownload=null;});
+ return materialDownload;
 }
 function downloadTextbook() {
  if(!$('#textbook-data').textContent.trim()){requestMaterials(downloadTextbook);return;}
  const a=document.createElement('a');a.href=ensurePDF();a.download='機率與統計.pdf';a.click();
 }
 $('#materialsOpen').addEventListener('click',()=>requestMaterials());
+$('#retryMaterials').addEventListener('click',()=>loadHostedMaterials().catch(()=>{}));
+$('#exportMaterials').addEventListener('click',function exportMaterials(){
+ if(!loadedPack){requestMaterials(exportMaterials);return;}
+ const pack={format:loadedPack.format,assets:loadedPack.assets,pdf:loadedPack.pdf};
+ downloadBlob(new Blob([JSON.stringify(pack)],{type:'application/json'}),'機率統計_教材包.json');
+});
 $('#chooseMaterials').addEventListener('click',()=>$('#materialsFile').click());
 $('#materialsDialog').addEventListener('close',()=>{
- if(!materialImportInProgress)pendingMaterialAction=null;
+ if(!materialImportInProgress&&!materialDownload)pendingMaterialAction=null;
 });
 $('#materialsFile').addEventListener('change',async event=>{
  const file=event.target.files[0];if(!file)return;
+ if(materialDownload){toast('網站教材正在下載，請等完成後再匯入');event.target.value='';return;}
  materialImportInProgress=true;$('#chooseMaterials').disabled=true;
  $('#materialsMessage').textContent='正在讀取教材包…';
  try{
   if(file.size>100000000)throw new Error('教材包超過大小限制');
-  const pack=validateMaterialPack(JSON.parse(await file.text()));
+  const pack=validateMaterialPack(JSON.parse(await file.text()));pack.revision=DATA.materialBundle.revision;
   let saved=true;
   try{await materialStore('readwrite',pack);}catch{saved=false;}
   applyMaterialPack(pack);
-  if(!saved){$('#materialsState').textContent='私人教材已載入（僅本次使用）';$('#materialsDescription').textContent='裝置未能保存教材包；重新開啟後請再次匯入。';}
+  materialStatus(saved?'教材已儲存，可離線查看':'教材已載入（僅本次使用）',saved?'已從本機教材包載入，選取的檔案未上傳。':'裝置未能保存教材包；重新開啟後請再次載入。');
   const action=pendingMaterialAction;pendingMaterialAction=null;
   $('#materialsDialog').close();
   toast(saved?'教材已儲存在此裝置，未上傳':'已載入；此裝置無法持續保存教材包');
@@ -294,8 +354,11 @@ $('#materialsFile').addEventListener('change',async event=>{
  finally{materialImportInProgress=false;$('#chooseMaterials').disabled=false;event.target.value='';}
 });
 async function restoreMaterials() {
- try{const stored=await materialStore('readonly');if(stored)applyMaterialPack(validateMaterialPack(stored));}
- catch{$('#materialsDescription').textContent='題目可直接複習；若教材未顯示，請重新匯入私人教材包。';}
+ try{
+  const stored=await materialStore('readonly');
+  if(stored){const pack=validateMaterialPack(stored);applyMaterialPack(pack);materialStatus('教材已儲存，可離線查看','原題、上課照片及完整課本已從此裝置載入。');if(pack.revision===DATA.materialBundle.revision){finishMaterialAction();return;}}
+ }catch{}
+ await loadHostedMaterials().catch(()=>{});
 }
 restoreMaterials();
 if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='127.0.0.1' || location.hostname==='localhost')) {
