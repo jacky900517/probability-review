@@ -1,5 +1,5 @@
-const CACHE='probability-review-9570c05f66e5';
-const FILES=["./", "./index.html", "./app.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
+const CACHE='probability-review-bad1ff61ba2e';
+const FILES=["./", "./index.html", "./app.js?v=276bf6d3db3e", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('probability-review-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{

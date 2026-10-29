@@ -41,6 +41,7 @@ function cardHTML(q,context='bank') {
  <div class="tags">${q.tags.map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join('')}${q.repeat?'<span class="tag repeat">同題再現</span>':''}${q.exam.includes('期中')?'<span class="tag repeat">期中考</span>':''}</div>
  <div class="section-reference"><strong>主要節次 ${escapeHTML(q.section)}</strong>${q.related.length?`<span>相關節次：${q.related.map(escapeHTML).join('、')}</span>`:''}</div>
  <details><summary>教材節次與分類依據</summary><div class="detail-body">${escapeHTML(q.classification)}${q.bookMatch?`<p class="book-match">教材對照：${escapeHTML(q.bookMatch)} · 印刷頁 ${q.sourcePage-21}<br><button data-book="${q.sourcePage}">查看教材對照頁 ↗</button></p>`:''}</div></details>
+ <div class="question-lesson"><span>${escapeHTML(u.plain?.purpose||u.intro)}</span><button data-guide="${u.id}">不懂為什麼用這個公式？看 §${escapeHTML(u.code)} →</button></div>
  <details><summary>給我一個提示</summary><div class="detail-body">${escapeHTML(q.hint)}</div></details>
  <details class="solution"><summary>查看解答與思路</summary><div class="detail-body"><div class="answer">${escapeHTML(q.answer)}</div><ol>${q.steps.map(s=>`<li>${escapeHTML(s)}</li>`).join('')}</ol>${q.options?`<p class="options">對照原題選項：${escapeHTML(q.options)}</p>`:''}${q.note?`<p class="note">${escapeHTML(q.note)}</p>`:''}${q.repeat?`<p>重複出題：${escapeHTML(questions[q.repeat].exam)} 第 ${questions[q.repeat].num} 題。</p>`:''}<p><button data-book="${q.page||u.page||''}" ${!(q.page||u.page)?'hidden':''}>回到教材 ↗</button></p></div></details>
  <details><summary>我的複習筆記</summary><div class="detail-body"><label for="${memoID}">記下這題容易忘記的地方</label><textarea class="memo" id="${memoID}" data-note="${q.id}" maxlength="5000" placeholder="例如：CDF 要把 ≤ 的情況一起加總。">${escapeHTML(r.note)}</textarea><small>自動儲存在此瀏覽器，可在「來源整理」匯出備份。</small></div></details>
@@ -53,10 +54,10 @@ function renderBank() {
   return (selectedUnit==='all'||q.unit===selectedUnit)&&(exam==='all'||matchesExam(q,exam))&&(status==='all'||status==='done'&&r.done||status==='todo'&&!r.done||status==='star'&&r.star)&&(!term||[q.title,q.body,q.exam,q.tags.join(' '),units[q.unit].name,units[q.unit].english,q.section,q.related.join(' '),q.classification,q.files.join(' '),JSON.stringify(q.additionalSources||[]),q.note].join(' ').toLocaleLowerCase().includes(term));
  });
  const unit=units[selectedUnit];
- $('#unitOverview').innerHTML=unit?`<section class="unit-overview"><h2>${escapeHTML(unit.chapter)} ${escapeHTML(unit.name)}</h2><p class="section-original">${escapeHTML(unit.english)}</p><p>${escapeHTML(unit.intro)}</p><button data-guide="${unit.id}">先看這個單元的公式與教材 →</button></section>`:'';
+ $('#unitOverview').innerHTML=unit?`<section class="unit-overview"><h2>${escapeHTML(unit.chapter)} ${escapeHTML(unit.name)}</h2><p class="section-original">${escapeHTML(unit.english)}</p><p>${escapeHTML(unit.plain?.purpose||unit.intro)}</p><button data-guide="${unit.id}">先看這節在幹嘛、什麼時候用 →</button></section>`:'';
  $('#resultTitle').innerHTML=`${unit?escapeHTML(unit.chapter)+' '+escapeHTML(unit.name):'依教材節次排列'}<span class="count">${filtered.length} / ${DATA.questions.length} 筆</span>`;
  const noDirect=unit&&!DATA.questions.some(q=>q.unit===unit.id);
- $('#cards').innerHTML=filtered.length?(selectedUnit==='all'?DATA.units.map(u=>{const group=filtered.filter(q=>q.unit===u.id);return group.length?`<div class="group-heading"><div><h3><span>${escapeHTML(u.code)}</span>${escapeHTML(u.name)}</h3><p>${escapeHTML(u.english)}</p></div><small>${group.length} 筆考題</small></div>`+group.map(q=>cardHTML(q)).join(''):'';}).join(''):filtered.map(q=>cardHTML(q)).join('')):`<div class="empty"><strong>${noDirect?'本節尚無直接對應考題':'目前沒有符合的題目'}</strong>${noDirect?'現有照片與教材重點已放在「公式與教材」。相關先備概念不重複計入主要題數。':'試試其他關鍵字，或按「清除篩選」。'}</div>`;
+ $('#cards').innerHTML=filtered.length?(selectedUnit==='all'?DATA.units.map(u=>{const group=filtered.filter(q=>q.unit===u.id);return group.length?`<div class="group-heading"><div><h3><span>${escapeHTML(u.code)}</span>${escapeHTML(u.name)}</h3><p>${escapeHTML(u.english)}</p></div><small>${group.length} 筆考題</small></div>`+group.map(q=>cardHTML(q)).join(''):'';}).join(''):filtered.map(q=>cardHTML(q)).join('')):`<div class="empty"><strong>${noDirect?'本節尚無直接對應考題':'目前沒有符合的題目'}</strong>${noDirect?'現有照片與教材重點已放在「白話教材」。相關先備概念不重複計入主要題數。':'試試其他關鍵字，或按「清除篩選」。'}</div>`;
 
  $('#random').disabled=filtered.length===0;
  updateProgress();
@@ -64,11 +65,12 @@ function renderBank() {
 function switchView(view) {
  selectedView=view;
  document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id===view));
- document.querySelectorAll('[data-view]').forEach(el=>{const active=el.dataset.view===view;el.classList.toggle('active',active);el.setAttribute('aria-selected',String(active));});
+ document.querySelectorAll('[role="tab"][data-view]').forEach(el=>{const active=el.dataset.view===view;el.classList.toggle('active',active);el.setAttribute('aria-selected',String(active));});
 }
-function chooseUnit(unit) {selectedUnit=unit;renderNav();renderBank();switchView('bank');}
+function chooseUnit(unit) {selectedUnit=unit;renderNav();renderBank();switchView('bank');history.replaceState(null,'','#bank');}
 function renderGuides() {
- $('#guideList').innerHTML=DATA.units.map((u,i)=>`<article class="guide" id="guide-${u.id}"><div class="guide-top"><div><div class="eyebrow">${u.chapterNumber===null?'SUPPLEMENT':'SECTION '+escapeHTML(u.code)}</div><h2>${escapeHTML(u.chapter)} ${escapeHTML(u.name)}</h2><p class="section-original">${escapeHTML(u.english)}</p><span class="chapter">${escapeHTML(u.chapter)}${u.page?` · 印刷頁 ${u.pages} · PDF 第 ${u.page} 頁起`:' · 數學先備'}</span></div>${u.page?`<button data-book="${u.page}">開啟教材 ↗</button>`:''}</div><p>${escapeHTML(u.intro)}</p><div class="formula-list">${u.formulas.map(f=>`<div class="formula">${escapeHTML(f)}</div>`).join('')}</div><ul class="tips">${u.tips.map(t=>`<li>${escapeHTML(t)}</li>`).join('')}</ul><button data-unit="${u.id}">本節考題 ${DATA.questions.filter(q=>q.unit===u.id).length} 題 →</button>${u.slides.length?`<div class="slides">${u.slides.map(f=>{const l=DATA.lectures.find(l=>l.file===f);return `<button class="slide" data-slide="${f}">${ASSETS[f]?`<img src="${ASSETS[f]}" loading="lazy" alt="${escapeHTML(l.title)}">`:'<span class="private-placeholder">匯入私人教材後查看照片</span>'}<span>${escapeHTML(l.title)} ↗</span></button>`;}).join('')}</div>`:'<p class="chapter">此節未提供專屬上課照片，請搭配教材或上述重點複習。</p>'}</article>`).join('');
+ if(!$('#guideStart').hasChildNodes())renderGuideStart();
+ $('#guideList').innerHTML=DATA.units.map(u=>`<article class="guide" id="guide-${u.id}"><div class="guide-top"><div><div class="eyebrow">${u.chapterNumber===null?'SUPPLEMENT':'SECTION '+escapeHTML(u.code)}</div><h2>${escapeHTML(u.chapter)} ${escapeHTML(u.name)}</h2><p class="section-original">${escapeHTML(u.english)}</p><span class="chapter">${escapeHTML(u.chapter)}${u.page?` · 印刷頁 ${u.pages} · PDF 第 ${u.page} 頁起`:' · 數學先備'}</span></div>${u.page?`<button data-book="${u.page}">開啟教材 ↗</button>`:''}</div>${lessonHTML(u)}<details class="formula-reference"><summary>課本公式備查與補充重點</summary><p>${escapeHTML(u.intro)}</p><div class="formula-list">${u.formulas.map(f=>`<div class="formula">${escapeHTML(f)}</div>`).join('')}</div><ul class="tips">${u.tips.map(t=>`<li>${escapeHTML(t)}</li>`).join('')}</ul></details><button data-unit="${u.id}">本節考題 ${DATA.questions.filter(q=>q.unit===u.id).length} 題 →</button>${u.slides.length?`<div class="slides">${u.slides.map(f=>{const l=DATA.lectures.find(l=>l.file===f);return `<button class="slide" data-slide="${f}">${ASSETS[f]?`<img src="${ASSETS[f]}" loading="lazy" alt="${escapeHTML(l.title)}">`:'<span class="private-placeholder">匯入私人教材後查看照片</span>'}<span>${escapeHTML(l.title)} ↗</span></button>`;}).join('')}</div>`:'<p class="chapter">此節未提供專屬上課照片，請搭配教材或上述重點複習。</p>'}</article>`).join('');
 }
 function renderSources() {
  const examRows=Object.entries(DATA.coverage).map(([exam,coverage])=>`<tr><td>${escapeHTML(exam)}</td><td>${DATA.questions.filter(q=>matchesExam(q,exam)).length}</td><td>${escapeHTML(coverage)}</td><td><button data-exam="${escapeHTML(exam)}">查看題目</button></td></tr>`).join('');
@@ -118,10 +120,11 @@ function updateQuestionState(id,field) {
 $('#unitNav').addEventListener('click',e=>{const b=e.target.closest('[data-unit]');if(b)chooseUnit(b.dataset.unit);});
 document.addEventListener('click',e=>{
  const b=e.target.closest('button');if(!b)return;
- if(b.dataset.view){switchView(b.dataset.view);return;}
+ if(b.dataset.view){switchView(b.dataset.view);history.replaceState(null,'','#'+b.dataset.view);if(!b.matches('[role="tab"]'))$('#'+b.dataset.view).scrollIntoView({behavior:'smooth'});return;}
  if(b.dataset.close){$('#'+b.dataset.close).close();return;}
  if(b.dataset.book){openBook(b.dataset.book);return;}
- if(b.dataset.guide){switchView('guides');$('#guide-'+b.dataset.guide).scrollIntoView({behavior:'smooth',block:'start'});return;}
+ if(b.dataset.guide){jumpToGuide(b.dataset.guide);return;}
+ if(b.dataset.question){jumpToQuestion(b.dataset.question);return;}
  if(b.dataset.unit&&!b.closest('#unitNav')){chooseUnit(b.dataset.unit);$('#bank').scrollIntoView({behavior:'smooth'});return;}
  if(b.dataset.slide){const l=DATA.lectures.find(l=>l.file===b.dataset.slide);showImages([b.dataset.slide],l?l.title:'原始點名題');return;}
  if(b.dataset.exam){selectedUnit='all';$('#exam').value=b.dataset.exam;$('#search').value='';$('#status').value='all';renderNav();renderBank();switchView('bank');$('#bank').scrollIntoView({behavior:'smooth'});return;}
@@ -151,6 +154,66 @@ $('#importFile').addEventListener('change',async e=>{
 });
 $('#exam').insertAdjacentHTML('beforeend',Object.keys(DATA.coverage).map(e=>`<option value="${escapeHTML(e)}">${escapeHTML(e)}</option>`).join(''));
 renderNav();renderBank();renderGuides();renderSources();
+
+// Plain-language explanations appear before the formula reference.
+function lessonHTML(u) {
+ const p=u.plain;
+ if(!p)return '';
+ const list=(items,tag='ul')=>`<${tag}>${items.map(s=>`<li>${escapeHTML(s)}</li>`).join('')}</${tag}>`;
+ return `<div class="lesson-purpose"><span>這節在幹嘛？</span><p>${escapeHTML(p.purpose)}</p></div>
+ <p class="lesson-scene">${escapeHTML(p.scene)}</p>
+ ${p.meaning?`<p>${escapeHTML(p.meaning)}</p>`:''}
+ <div class="lesson-cues"><h3>看到什麼，就想到這節？</h3>${list(p.cues)}</div>
+ ${p.steps?`<div class="lesson-steps"><h3>拿到題目，照這個順序做</h3>${list(p.steps,'ol')}</div>`:''}
+ ${p.choices?`<div class="formula-decisions"><h3>題目問不同的事，公式就不同</h3>${p.choices.map(([ask,formula,why])=>`<div class="formula-decision"><h4>${escapeHTML(ask)}</h4><div class="formula">${escapeHTML(formula)}</div><p>${escapeHTML(why)}</p></div>`).join('')}</div>`:''}
+ ${p.examples?`<div class="worked-examples"><h3>把公式用在一題裡</h3>${p.examples.map((e,i)=>`<details class="worked" ${i===0?'open':''}><summary>${escapeHTML(e.title)}</summary><div class="lesson-detail">${list(e.steps,'ol')}<div class="answer">${escapeHTML(e.result)}</div><p class="result-meaning"><strong>這個答案在說：</strong>${escapeHTML(e.meaning)}</p>${e.qid?`<button data-question="${e.qid}">自己做這道考古題 →</button>`:''}</div></details>`).join('')}</div>`:''}
+ ${p.traps?`<details class="lesson-extra"><summary>最容易套錯的地方</summary><div class="lesson-detail">${list(p.traps)}</div></details>`:''}
+ ${p.check?`<div class="lesson-check"><h3>先別算，確認你有懂</h3><p>${escapeHTML(p.check[0])}</p><details><summary>看白話答案</summary><p>${escapeHTML(p.check[1])}</p></details></div>`:''}`;
+}
+
+function renderGuideStart() {
+ $('#guideStart').innerHTML=`<section class="lesson-start" aria-labelledby="lessonStartTitle"><div class="eyebrow">先看懂，再選公式</div><h2 id="lessonStartTitle">先問：我到底要算什麼？</h2><p>同一個 f(x)，問機率、平均、波動，做法完全不同。先看題目最後一句，再看給了什麼資料。</p>
+ <div class="chapter-map"><div><span>第 3 章 · 機率</span><strong>某種結果，多容易發生？</strong><p>3.1 把結果變成數字 → 3.2 離散型加機率 → 3.3 連續型算面積 → 3.4 同時看兩個量。</p></div><div><span>第 4 章 · 平均與波動</span><strong>長期平均多少？上下差多少？</strong><p>4.1 算平均 → 4.2 算波動與共同變動 → 4.3 算加總、倍數後的結果 → 4.4 只靠平均和波動，保證機率範圍。</p></div></div>
+ <div class="symbol-key"><strong>符號先翻成人話</strong><p>X 是「你在量的東西」；x 是它的一個可能值。Σ 是「一項項加起來」；∫ 是「連續地累加」。E 是「算平均」；Var 是「量波動」；P 是「算機率」。</p><p><strong>f(x) 要先看類型：</strong>離散型是 X=x 這一格的機率；連續型是密度高度，要乘上小段寬度再累加成面積，才是機率。F(x) 一律是「累積到 x 為止」的機率。</p><p>下方的 ∫[a,b] 表示「從 a 積到 b」；C(n,r) 表示「從 n 個選 r 個，不計順序」。</p></div>
+ <div class="formula-picker"><label for="formulaQuestion">題目最後在問什麼？</label><select id="formulaQuestion"><option value="">選一種問法，看看第一步該做什麼</option>${DATA.formulaRoutes.map(r=>`<option value="${r.id}">${escapeHTML(r.label)}</option>`).join('')}</select><div id="formulaAdvice" aria-live="polite"><p class="picker-hint">先選問法，再到對應節次看示範。不必一開始就背整排公式。</p></div></div>
+ <nav class="lesson-jumps" aria-label="白話教材節次">${DATA.units.map(u=>`<button data-guide="${u.id}">${escapeHTML(u.code)} ${escapeHTML(u.name)}</button>`).join('')}</nav>
+ <p class="lesson-scope">目前依你提供的題目整理第 1–4 章，白話詳解重點為 §3.1–4.4。以下仍照原文教材順序；補充小例子不計入考古題數。</p></section>`;
+}
+
+function renderFormulaAdvice(id) {
+ const r=DATA.formulaRoutes.find(r=>r.id===id);
+ if(!r){$('#formulaAdvice').innerHTML='<p class="picker-hint">先選問法，再到對應節次看示範。不必一開始就背整排公式。</p>';return;}
+ const u=DATA.units.find(u=>u.code===r.section);
+ $('#formulaAdvice').innerHTML=`<div class="formula-advice"><strong>先看 §${escapeHTML(r.section)}：${escapeHTML(u.plain.purpose)}</strong><p>${escapeHTML(r.explanation)}</p><div class="formula">${escapeHTML(r.formula)}</div><div class="actions"><button data-guide="${u.id}">看這節怎麼做 →</button>${r.qid?`<button data-question="${r.qid}">練對應考題 →</button>`:''}</div></div>`;
+}
+
+function jumpToQuestion(id) {
+ const q=questions[id];if(!q)return;
+ if($('#randomDialog').open)$('#randomDialog').close();
+ $('#search').value='';$('#exam').value='all';$('#status').value='all';
+ chooseUnit(q.unit);
+ const card=$('#bank-'+id);card.tabIndex=-1;card.focus({preventScroll:true});card.scrollIntoView({behavior:'smooth',block:'start'});
+ history.replaceState(null,'','#question-'+id);
+}
+
+function jumpToGuide(unit) {
+ if(!units[unit])return;
+ if($('#randomDialog').open)$('#randomDialog').close();
+ switchView('guides');
+ const section=$('#guide-'+unit);section.tabIndex=-1;section.focus({preventScroll:true});section.scrollIntoView({behavior:'smooth',block:'start'});
+ history.replaceState(null,'','#guide-'+unit);
+}
+
+function openLinkedView() {
+ const hash=location.hash.slice(1);
+ if(hash.startsWith('guide-'))jumpToGuide(hash.slice(6));
+ else if(hash.startsWith('question-'))jumpToQuestion(hash.slice(9));
+ else if(['bank','guides','sources'].includes(hash)){switchView(hash);$('#'+hash).scrollIntoView();}
+}
+
+document.addEventListener('change',e=>{if(e.target.id==='formulaQuestion')renderFormulaAdvice(e.target.value);});
+window.addEventListener('hashchange',openLinkedView);
+openLinkedView();
 
 // Private material files are read locally and never sent to a server.
 let pendingMaterialAction = null;
